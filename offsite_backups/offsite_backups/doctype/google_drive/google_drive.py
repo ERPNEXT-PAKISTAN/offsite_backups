@@ -21,6 +21,20 @@ from offsite_backups.offsite_backups.offsite_backup_utils import (
 )
 
 
+GOOGLE_DRIVE_OAUTH_CONFIG = {
+	"domain_callback_url": "offsite_backups.offsite_backups.doctype.google_drive.google_drive.authorize_access",
+	"service_version": ("drive", "v3"),
+}
+
+
+def register_google_drive_oauth():
+	"""Register Drive in every web worker before Frappe validates OAuth callbacks."""
+	from frappe.integrations import google_oauth
+
+	google_oauth._DOMAIN_CALLBACK_METHODS["drive"] = GOOGLE_DRIVE_OAUTH_CONFIG["domain_callback_url"]
+	google_oauth._SERVICES["drive"] = GOOGLE_DRIVE_OAUTH_CONFIG["service_version"]
+
+
 class GoogleDrive(Document):
 	# begin: auto-generated types
 	# This code is auto-generated. Do not modify anything in this block.
@@ -52,11 +66,7 @@ class GoogleDrive(Document):
 			button_label = frappe.bold(_("Allow Google Drive Access"))
 			raise frappe.ValidationError(_("Click on {0} to generate Refresh Token.").format(button_label))
 
-		oauth_config = {
-			"domain_callback_url": "offsite_backups.offsite_backups.doctype.google_drive.google_drive.authorize_access",
-			"service_version": ("drive", "v3"),
-		}
-		oauth_obj = GoogleOAuth("drive", config=oauth_config)
+		oauth_obj = GoogleOAuth("drive", config=GOOGLE_DRIVE_OAUTH_CONFIG)
 		r = oauth_obj.refresh_access_token(
 			self.get_password(fieldname="refresh_token", raise_exception=False)
 		)
@@ -72,7 +82,8 @@ def authorize_access(reauthorize=False, code=None):
 	"""
 
 	oauth_code = frappe.db.get_single_value("Google Drive", "authorization_code") if not code else code
-	oauth_obj = GoogleOAuth("drive")
+	# Register Drive before the common Frappe callback validates the domain.
+	oauth_obj = GoogleOAuth("drive", config=GOOGLE_DRIVE_OAUTH_CONFIG)
 
 	if not oauth_code or reauthorize:
 		if reauthorize:
@@ -93,7 +104,7 @@ def authorize_access(reauthorize=False, code=None):
 def get_google_drive_object():
 	"""Return an object of Google Drive."""
 	account = frappe.get_doc("Google Drive")
-	oauth_obj = GoogleOAuth("drive")
+	oauth_obj = GoogleOAuth("drive", config=GOOGLE_DRIVE_OAUTH_CONFIG)
 
 	google_drive = oauth_obj.get_google_service_object(
 		account.get_access_token(),

@@ -192,7 +192,9 @@ scheduler_events = {
 
 # Request Events
 # ----------------
-# before_request = ["offsite_backups.utils.before_request"]
+before_request = [
+	"offsite_backups.offsite_backups.doctype.google_drive.google_drive.register_google_drive_oauth"
+]
 # after_request = ["offsite_backups.utils.after_request"]
 
 # Job Events
